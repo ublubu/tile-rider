@@ -5,72 +5,78 @@
 module Grid where
 
 import qualified Graphics.UI.SDL.Types as SDL.T
+import Control.Applicative
 
-data Tile a = Tile
-  { tileRight :: Maybe (Tile a)
-  , tileDown :: Maybe (Tile a)
-  , tileContents :: a
-  }
+data Tile a = Tile a a a a
 
-data TileCursor a = TileCursor
-  { cursorTile :: Tile a
-  , cursorLeft :: Maybe (TileCursor a)
-  , cursorUp :: Maybe (TileCursor a)
-  }
+class Orientable o where
+  orientableRotate :: o a -> o a
 
-cursorRight :: TileCursor a -> Maybe (TileCursor a)
-cursorRight c = case tileRight (cursorTile c) of
-  Nothing -> Nothing
-  Just t -> Just TileCursor { cursorTile = t
-                            , cursorLeft = Just c
-                            , cursorUp = cursorRight =<< cursorUp c }
+instance Orientable Tile where
+  orientableRotate (Tile a b c d) = Tile b c d a
 
-cursorDown :: TileCursor a -> Maybe (TileCursor a)
-cursorDown c = case tileDown (cursorTile c) of
-  Nothing -> Nothing
-  Just t -> Just TileCursor { cursorTile = t
-                            , cursorLeft = cursorDown =<< cursorLeft c
-                            , cursorUp = Just c }
+data GridOrientation = GridRight | GridDown | GridLeft | GridUp deriving Eq
 
-moveRight :: (Int, Int) -> (Int, Int)
-moveRight (x, y) = (x + 1, y)
+data Oriented a = Oriented GridOrientation a
 
-moveLeft :: (Int, Int) -> (Int, Int)
-moveLeft (x, y) = (x - 1, y)
+rotate :: Oriented a -> Oriented a
+rotate (Oriented GridRight x) = Oriented GridDown x
+rotate (Oriented GridDown x) = Oriented GridLeft x
+rotate (Oriented GridLeft x) = Oriented GridUp x
+rotate (Oriented GridUp x) = Oriented GridRight x
 
-moveDown :: (Int, Int) -> (Int, Int)
-moveDown (x, y) = (x, y + 1)
+rotateTo :: GridOrientation -> Oriented a -> Oriented a
+rotateTo o a@(Oriented o' _) = if o == o' then a else rotateTo o (rotate a)
 
-moveUp :: (Int, Int) -> (Int, Int)
-moveUp (x, y) = (x, y - 1)
+oriAp :: Orientable o => Oriented (o a -> b) -> Oriented (o a) -> Oriented b
+oriAp a@(Oriented ori f) b@(Oriented ori' x) =
+  if ori == ori' then Oriented ori $ f x
+  else oriAp a (rotate b)
 
-instance Functor Tile where
-  fmap f t = Tile { tileRight = f' =<< tileRight t
-                  , tileDown = f' =<< tileDown t
-                  , tileContents = f (tileContents t)}
-    where f' = return . fmap f
+data Corner a = Corner (Maybe (Corner a)) (Maybe (Corner a)) a
 
-instance Functor TileCursor where
-  fmap f c = TileCursor { cursorTile = fmap f tile
-                        , cursorLeft = f' =<< cl
-                        , cursorUp = f' =<< cu }
-    where tile = cursorTile c
-          cl = cursorLeft c
-          cu = cursorUp c
-          f' = return . fmap f
+instance Functor Corner where
+  fmap f (Corner a b x) = Corner a' b' (f x)
+    where a' = f' a
+          b' = f' b
+          f' = fmap (fmap f)
 
-instance Grid (Tile a) (Tile b) a b where
-  gridMap f pos t = Tile { tileRight = mapTile tileRight moveRight
-                         , tileDown = mapTile tileDown moveDown
-                         , tileContents = f pos (tileContents t)}
-    where mapTile getTile getPos = (return . (gridMap f $ getPos pos)) =<< getTile t
+flipCorner :: Corner a -> Corner a
+flipCorner (Corner a b x) = Corner (fmap flipCorner b) (fmap flipCorner a) x
 
-instance Grid (TileCursor a) (TileCursor b) a b where
-  gridMap f pos c = TileCursor { cursorTile = gridMap f pos (cursorTile c)
-                               , cursorLeft = mapCursor cursorLeft moveLeft
-                               , cursorUp = mapCursor cursorLeft moveUp }
-    where mapCursor getCursor getPos = (return . (gridMap f $ getPos pos)) =<< getCursor c
+ahead :: Corner a -> Maybe (Corner a)
+ahead (Corner a _ _) = a
 
-class Grid g h a b | g -> a, h -> b where
-  gridMap :: ((Int, Int) -> a -> b) -> (Int, Int) -> g -> h
+adjacent :: Corner a -> Maybe (Corner a)
+adjacent (Corner _ a _) = a
+
+newtype CornerCursor a = CornerCursor { cursorTile :: Tile (Corner a) }
+
+instance Functor CornerCursor where
+  fmap f c = CornerCursor { cursorTile = Tile (fmap f w) (fmap f x) (fmap f y) (fmap f z) }
+    where (Tile w x y z) = cursorTile c
+
+extendAhead :: Corner a -> Corner a -> Maybe (Corner a)
+extendAhead w x = fmap (\(Corner _ _ contents) -> Corner c' (Just x) contents) w'
+  where c  = ahead x
+        d  = adjacent w
+        w' = ahead w
+        c' = do
+          dd <- d
+          cc <- c
+          extendAhead dd cc
+
+extendAdjacent :: Corner a -> Corner a -> Maybe (Corner a)
+extendAdjacent z y = extendAhead (flipCorner z) (flipCorner y)
+
+advance :: CornerCursor a -> Maybe (CornerCursor a)
+advance cursor = do
+  w' <- ahead w
+  x' <- extendAhead w x
+  y' <- extendAdjacent z y
+  z' <- adjacent z
+  return CornerCursor { cursorTile = Tile w' x' y' z'}
+    where (Tile w x y z) = cursorTile cursor
+
+
 
