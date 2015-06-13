@@ -68,6 +68,7 @@ executable side-scroller
                      , linear >= 1.18
                      , lens >= 4.11
                      , vector
+                     , either >= 4.4
   
   -- Directories containing source files.
   hs-source-dirs:      src

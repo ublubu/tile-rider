@@ -151,7 +151,11 @@ penetratedEdge (Overlap (ve, _) _ _) = wlift2 (,) a b
 data Contact a = Contact { contactPoints :: Either (P2 a) (P2 a, P2 a)
                          , contactNormal :: V2 a }
 
-clipEdge :: (Show a, Floating a, Epsilon a, Ord a) => (P2 a, P2 a) -> V2 a -> (P2 a, P2 a) -> Maybe (Contact a)
+flattenContactPoints :: Contact a -> [P2 a]
+flattenContactPoints (Contact (Left p) _) = [p]
+flattenContactPoints (Contact (Right (p1, p2)) _) = [p1, p2]
+
+clipEdge :: (Floating a, Epsilon a, Ord a) => (P2 a, P2 a) -> V2 a -> (P2 a, P2 a) -> Maybe (Contact a)
 clipEdge (a, b) n inc@(c, d) = do
   inc' <- applyClip' (clipSegment aBound (cd, inc)) inc
   inc'' <- applyClip' (clipSegment bBound (cd, inc')) inc'
@@ -163,13 +167,13 @@ clipEdge (a, b) n inc@(c, d) = do
         abBound = Line2 a (-n)
         cd = toLine2 c d
 
-contact :: (Show a, Floating a, Epsilon a, Ord a) => ShapeInfo a -> ShapeInfo a -> Maybe (Either (WorldT (Contact a)) (WorldT (Contact a)))
+contact :: (Floating a, Epsilon a, Ord a) => ShapeInfo a -> ShapeInfo a -> Maybe (Either (WorldT (Contact a)) (WorldT (Contact a)))
 contact a b = either (fmap Left . contact_) (fmap Right . contact_) =<< ovl
   where ovlab = minOverlap' a b
         ovlba = minOverlap' b a
         ovl = maybeBranch (\oab oba -> overlapDepth oab < overlapDepth oba) ovlab ovlba
 
-contact_ :: (Show a, Floating a, Epsilon a, Ord a) => Overlap a -> Maybe (WorldT (Contact a))
+contact_ :: (Floating a, Epsilon a, Ord a) => Overlap a -> Maybe (WorldT (Contact a))
 contact_ ovl = wflip $ (wmap clipEdge edge) `wap` n `wap` pen
   where edge = penetratedEdge ovl
         pen = penetratingEdge ovl

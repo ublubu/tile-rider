@@ -118,3 +118,7 @@ takeDir dir n x
 folds :: (b -> b) -> b -> [a] -> [b]
 folds _ _ [] = []
 folds f a0 (_:xs) = a0 : folds f (f a0) xs
+
+eitherFlip :: (a -> b -> b -> c) -> Either a a -> b -> b -> c
+eitherFlip f (Left x) = f x
+eitherFlip f (Right x) = flip (f x)
