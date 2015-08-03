@@ -29,7 +29,6 @@ testWorld = World (fromList [testObj, testObj])
 
 -- TODO: make ConstraintGen and External indexed functions (?) so there can be object-specific behavior.
 data WorldPair a = WorldPair (Int, Int) a deriving Show
-type External a = a -> PhysicalObj a -> PhysicalObj a
 type WorldChanged a = World a -> World a -> Bool
 data WorldBehavior a = WorldBehavior [ConstraintGen a] [External a] (WorldChanged a) Int
 

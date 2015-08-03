@@ -40,6 +40,7 @@ physObjVel3 f po = fmap g (f (_physObjVel3 po))
 testObj = PhysicalObj (V2 1 0) 0.5 (V2 0 0) 0 (rectangleHull 2 2) (2, 1)
 testPair = (testObj, testObj)
 
+type External a = a -> PhysicalObj a -> PhysicalObj a
 data Constraint a = Constraint (V6 a) a
 type Constraint' a = ConstrainedPair a -> Constraint a
 type ConstrainedPair a = (PhysicalObj a, PhysicalObj a)
