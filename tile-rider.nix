@@ -1,5 +1,5 @@
-{ mkDerivation, base, containers, either, lens, linear, ListZipper
-, monad-extras, mtl, sdl2, stdenv, vector, zippers
+{ mkDerivation, base, containers, lens, ListZipper, monad-extras
+, mtl, sdl2, stdenv
 }:
 mkDerivation {
   pname = "tile-rider";
@@ -8,8 +8,7 @@ mkDerivation {
   isLibrary = false;
   isExecutable = true;
   executableHaskellDepends = [
-    base containers either lens linear ListZipper monad-extras mtl sdl2
-    vector zippers
+    base containers lens ListZipper monad-extras mtl sdl2
   ];
   homepage = "https://github.com/ublubu/tile-rider";
   description = "a simple puzzle game in Haskell with SDL2";
